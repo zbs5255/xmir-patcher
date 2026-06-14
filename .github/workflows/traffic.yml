@@ -45,27 +45,32 @@ jobs:
 
     steps:
       - name: Create gh-pages branch if missing
-        if: github.event.inputs.init_pages == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          WORK_DIR: ${{ env.WORK_DIR }}
         run: |
           set -e
-          git clone https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git repo
-          cd repo
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          if git show-ref --verify --quiet refs/heads/gh-pages; then
+          AUTH_REPO="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          if git ls-remote --exit-code --heads "$AUTH_REPO" gh-pages >/dev/null 2>&1; then
               echo "gh-pages already exists"
               exit 0
           fi
+          TMP_DIR=$(mktemp -d)
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          git clone "$AUTH_REPO" "$TMP_DIR/repo"
+          cd "$TMP_DIR/repo"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           echo "Creating empty gh-pages branch"
           git checkout --orphan gh-pages
-          git rm -rf .
-          mkdir -p ${{ env.WORK_DIR }}
-          touch ${{ env.WORK_DIR }}/clones.svg
+          git rm -rf . || true
+          mkdir -p "$WORK_DIR"
+          for FILE in clones.json clones_uniq.json views.json views_uniq.json; do
+              echo '{"total":0,"last_update":"","daily":{}}' > "$WORK_DIR/$FILE"
+          done
           echo "# gh-pages" > README.md
-          git add README.md ${{ env.WORK_DIR }}/*
+          git add README.md "$WORK_DIR"
           git commit -m "init gh-pages"
           git push origin gh-pages    
     
