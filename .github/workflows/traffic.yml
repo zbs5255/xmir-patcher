@@ -75,7 +75,7 @@ jobs:
           git push origin gh-pages    
     
       - name: Checkout gh-pages
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: gh-pages
           fetch-depth: 0
